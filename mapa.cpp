@@ -69,11 +69,12 @@ void caminoMinimos (EstadoVertice * D, calle ** matPesos, int numCalles, int *F,
 
 	/*valores iniciales de la tabla D Se marca en F el origen */
 	F[s] = 1;
-	
+	#pragma omp parallel for shared(F, D, matPesos, numCalles)
 	for(int i=0; i<numCalles;++i)
 	{
-		if(s!=i)
+		if(s!=i){
 			F[i]=0;
+		}
 		D[i].cantidad.distancia = matPesos[s][i].cantidad.distancia;
 		//std:: cout << "\n"<< D[i].cantidad.distancia;
 		D[i].ultimaCalle = s;
@@ -82,30 +83,33 @@ void caminoMinimos (EstadoVertice * D, calle ** matPesos, int numCalles, int *F,
 
 	for(int i = 0; i<numCalles;++i)
 	{
+		v = minimo(F,D,numCalles); // selecciona vértice no marcado de menor cantidad.distancia 
+		F[v] = 1; 
+		//actualiza cantidad.distancia de vértices no marcados 
 		
+		#pragma omp parallel 
 		{
-			v = minimo(F,D,numCalles); // selecciona vértice no marcado de menor cantidad.distancia 
-			F[v] = 1; 
-			//actualiza cantidad.distancia de vértices no marcados 
-			
-			
+			#pragma omp for 
 			for(int w = 0; w<numCalles ;++w ){
-				if(!F[w]){
-
-					if((D[v].cantidad.distancia + matPesos[v][w].cantidad.distancia) <= D[w].cantidad.distancia)
+			if(!F[w]){
+				if((D[v].cantidad.distancia + matPesos[v][w].cantidad.distancia) <= D[w].cantidad.distancia)
+				{
+					#pragma omp critical
 					{
-							if((D[v].cantidad.distancia + matPesos[v][w].cantidad.distancia) <= D[w].cantidad.distancia)
-							{
-								
-								D[w].cantidad.distancia = D[v].cantidad.distancia + matPesos[v][w].cantidad.distancia;
-								D[w].ultimaCalle = v;
-								D[w].nombreCalle = matPesos[v][w].nombre;
-							}
-						
+						if((D[v].cantidad.distancia + matPesos[v][w].cantidad.distancia) <= D[w].cantidad.distancia)
+						{
+							
+							D[w].cantidad.distancia = D[v].cantidad.distancia + matPesos[v][w].cantidad.distancia;
+							D[w].ultimaCalle = v;
+							D[w].nombreCalle = matPesos[v][w].nombre;
+						}
 					}
 				}
 			}
 		}
+
+		}
+				
 	}
 
 	
@@ -159,20 +163,29 @@ void caminoMinimosTiempo (EstadoVertice* D, calle ** matPesos, int numCalles, in
 
 		F[v] = 1; 
 		//actualiza cantidad.tiempo de vértices no marcados
-		for(w = 0; w<numCalles; ++w)
-			if(!F[w])
-				if((D[v].cantidad.tiempo + matPesos[v][w].cantidad.tiempo ) <= D[w].cantidad.tiempo)
+		#pragma omp parallel 
+		{
+			#pragma omp for 
+			for(w = 0; w<numCalles; ++w)
+			{
+				if(!F[w])
 				{
+					if((D[v].cantidad.tiempo + matPesos[v][w].cantidad.tiempo ) <= D[w].cantidad.tiempo)
 					{
-						if((D[v].cantidad.tiempo + matPesos[v][w].cantidad.tiempo ) <= D[w].cantidad.tiempo)
+						#pragma omp critical
 						{
-							
-							D[w].cantidad.tiempo = D[v].cantidad.tiempo + matPesos[v][w].cantidad.tiempo ;
-							D[w].ultimaCalle = v;
-							D[w].nombreCalle = matPesos[v][w].nombre;
+							if((D[v].cantidad.tiempo + matPesos[v][w].cantidad.tiempo ) <= D[w].cantidad.tiempo)
+							{
+								
+								D[w].cantidad.tiempo = D[v].cantidad.tiempo + matPesos[v][w].cantidad.tiempo ;
+								D[w].ultimaCalle = v;
+								D[w].nombreCalle = matPesos[v][w].nombre;
+							}
 						}
 					}
 				}
+			}
+		}
 	}
 }
 
